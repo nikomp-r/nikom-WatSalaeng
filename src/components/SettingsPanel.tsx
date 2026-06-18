@@ -1,6 +1,21 @@
 import React, { useState } from "react";
 import { QuotaSettings, VisitorRecord } from "../types";
-import { Settings, Save, RotateCcw, ShieldAlert, Sliders, Info, Server, Key, RefreshCw, LogOut } from "lucide-react";
+import { 
+  Settings, 
+  Save, 
+  RotateCcw, 
+  ShieldAlert, 
+  Sliders, 
+  Info, 
+  Server, 
+  Key, 
+  RefreshCw, 
+  LogOut,
+  Cloud,
+  ExternalLink,
+  Database,
+  CheckCircle2
+} from "lucide-react";
 import { motion } from "motion/react";
 import RealtimeLogs from "./RealtimeLogs";
 
@@ -21,6 +36,12 @@ interface SettingsPanelProps {
     dateString: string
   ) => void;
   onLogout: () => void;
+  googleUser: any;
+  googleToken: string | null;
+  isSyncingWithSheets: boolean;
+  onGoogleSignIn: () => Promise<void>;
+  onGoogleSignOut: () => Promise<void>;
+  onSyncWithGoogleSheets: () => Promise<void>;
 }
 
 export default function SettingsPanel({
@@ -33,6 +54,12 @@ export default function SettingsPanel({
   onDeleteVisitor,
   onEditVisitor,
   onLogout,
+  googleUser,
+  googleToken,
+  isSyncingWithSheets,
+  onGoogleSignIn,
+  onGoogleSignOut,
+  onSyncWithGoogleSheets,
 }: SettingsPanelProps) {
   const [dailyVal, setDailyVal] = useState(quotaSettings.daily.toString());
   const [monthlyVal, setMonthlyVal] = useState(quotaSettings.monthly.toString());
@@ -108,7 +135,95 @@ export default function SettingsPanel({
           </div>
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Google Sheets Integration Section */}
+        <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200 rounded-3xl p-6 md:p-8 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3.5 bg-emerald-100 text-emerald-800 rounded-2xl shadow-inner">
+                <Cloud className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                  <span>เชื่อมต่อ Google Sheets API</span>
+                  {googleToken ? (
+                    <span className="text-[10px] bg-emerald-200 text-emerald-950 border border-emerald-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-emerald-600" />
+                      เชื่อมโยงสำเร็จ
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      ยังไม่ได้เชื่อมต่อ
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold max-w-xl">
+                  บันทึกข้อมูลการลงทะเบียนรายละเอียดผู้เข้าเยี่ยมชม และสำรองข้อมูลไปที่ Google Sheets อย่างมีประสิทธิภาพ
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 self-center md:self-auto">
+              {googleToken ? (
+                <>
+                  <button
+                    onClick={() => onSyncWithGoogleSheets()}
+                    disabled={isSyncingWithSheets}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingWithSheets ? "animate-spin" : ""}`} />
+                    <span>{isSyncingWithSheets ? "กำลังซิงค์..." : "ดึง/ซิงค์จากชีทบัดนี้"}</span>
+                  </button>
+
+                  <button
+                    onClick={() => onGoogleSignOut()}
+                    className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>ยกเลิกเชื่อมต่อ</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => onGoogleSignIn()}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Database className="w-4 h-4 text-emerald-400" />
+                  <span>เชื่อมต่อ Google Sheets</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-dashed border-slate-200 text-xs">
+            <div className="bg-white/60 p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-1">
+              <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">ID ของสเปรดชีต (Spreadsheet ID)</span>
+              <span className="font-mono text-slate-750 font-bold break-all select-all">1xDj8iqdqHHSnpa4-QCB2tck9kHS0zkenSNWGPtfcGcA</span>
+            </div>
+            <div className="bg-white/60 p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-1 flex justify-between items-center">
+              <div>
+                <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">ชื่อเวิร์กชีต (Active Sheet Name)</span>
+                <span className="font-sans text-slate-800 font-black">รายชื่อผู้เยี่ยมชม</span>
+              </div>
+              <a
+                href="https://docs.google.com/spreadsheets/d/1xDj8iqdqHHSnpa4-QCB2tck9kHS0zkenSNWGPtfcGcA/edit"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1.5 rounded-lg border border-emerald-100"
+              >
+                <span>เปิดไปที่ Google Sheet</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+
+          {googleUser && (
+            <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>ล็อกอินบัญชี Google อยู่ในขณะนี้: <strong>{googleUser.email}</strong> ({googleUser.displayName})</span>
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Quota limit controls */}
         <div className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
@@ -234,6 +349,9 @@ export default function SettingsPanel({
       visitors={visitors} 
       onDeleteVisitor={onDeleteVisitor} 
       onEditVisitor={onEditVisitor} 
+      googleToken={googleToken}
+      isSyncingWithSheets={isSyncingWithSheets}
+      onSyncWithGoogleSheets={onSyncWithGoogleSheets}
     />
   </div>
 );

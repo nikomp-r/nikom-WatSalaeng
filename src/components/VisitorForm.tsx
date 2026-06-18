@@ -103,7 +103,7 @@ export default function VisitorForm({
         </div>
         <div>
           <span className="text-xs font-bold text-indigo-700 tracking-wider uppercase flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> บันทึกข้อมูลคลังความรู้
+            <Sparkles className="w-3.5 h-3.5" /> บันทึกข้อมูลผู้เข้าเยี่ยมชม
           </span>
           <h2 className="text-xl font-bold text-indigo-950 tracking-tight">
             กรอกข้อมูลรายละเอียดผู้เข้าเยี่ยมชม
@@ -124,7 +124,7 @@ export default function VisitorForm({
             <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-bold text-sm">ลงทะเบียนเข้าเยี่ยมชมสำเร็จ!</p>
-              <p className="text-xs text-emerald-800 mt-0.5">คุณ {successInfo.name} ได้บันทึกร่วมเครือข่ายแล้ว</p>
+              <p className="text-xs text-emerald-800 mt-0.5">คุณ {successInfo.name} ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว</p>
               <p className="text-[10px] text-emerald-600 mt-1">{formatThaiDate(successInfo.timestamp)}</p>
             </div>
           </motion.div>
@@ -179,7 +179,7 @@ export default function VisitorForm({
             type="text"
             value={organization}
             onChange={(e) => setOrganization(e.target.value)}
-            placeholder="เช่น เกษตรกร, ผู้ประกอบการ, บริษัทยิ่งใหญ่, โรงเรียนวัดแสลง"
+            placeholder="เช่น ประชาชนทั่วไป, นักเรียน, เกษตรกร, ผู้ประกอบการ, บริษัทยิ่งใหญ่, โรงเรียนวัดแสลง, มหาวิทยาลัย, อบต.ท่าช้าง"
             disabled={isDailyFull && !isAdminLoggedIn}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400"
           />

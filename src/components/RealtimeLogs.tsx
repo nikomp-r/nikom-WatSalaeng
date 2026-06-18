@@ -25,6 +25,9 @@ interface RealtimeLogsProps {
     timestamp: number,
     dateString: string
   ) => void;
+  googleToken?: string | null;
+  isSyncingWithSheets?: boolean;
+  onSyncWithGoogleSheets?: () => Promise<void>;
 }
 
 // Convert a unix timestamp to HTML datetime-local format (YYYY-MM-DDTHH:mm)
@@ -53,6 +56,9 @@ export default function RealtimeLogs({
   visitors,
   onDeleteVisitor,
   onEditVisitor,
+  googleToken,
+  isSyncingWithSheets,
+  onSyncWithGoogleSheets,
 }: RealtimeLogsProps) {
   // Query state
   const [searchTerm, setSearchTerm] = useState("");
@@ -65,6 +71,7 @@ export default function RealtimeLogs({
   const [editLastName, setEditLastName] = useState("");
   const [editOrg, setEditOrg] = useState("");
   const [editDatetimeLocal, setEditDatetimeLocal] = useState("");
+  const [isDownloadingCSV, setIsDownloadingCSV] = useState(false);
 
   const totalCount = visitors.length;
 
@@ -122,9 +129,37 @@ export default function RealtimeLogs({
   };
 
   // CSV Exporter
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
+    let recordsToExport = filteredVisitors;
+
+    if (googleToken) {
+      setIsDownloadingCSV(true);
+      try {
+        const { fetchVisitorsFromSheet } = await import("../lib/googleSheets");
+        const sheetVisitors = await fetchVisitorsFromSheet(googleToken);
+        if (sheetVisitors && sheetVisitors.length > 0) {
+          recordsToExport = sheetVisitors.filter((visitor) => {
+            const textMatch =
+              `${visitor.firstName} ${visitor.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              visitor.organization.toLowerCase().includes(searchTerm.toLowerCase());
+
+            const date = new Date(visitor.timestamp);
+            const monthMatch = selectedMonthFilter === "all" || date.getMonth() === parseInt(selectedMonthFilter);
+            const yearMatch = selectedYearFilter === "all" || date.getFullYear() === parseInt(selectedYearFilter);
+
+            return textMatch && monthMatch && yearMatch;
+          });
+        }
+      } catch (err: any) {
+        console.error("Direct sheet download failed, falling back to local database:", err);
+        alert("⚠️ ดึงข้อมูลล่าสุดจาก Google Sheets ไม่สำเร็จ ระบบจะทำการดาวน์โหลดจากข้อมูลสถิติม๊อคสำรองในเครื่องแทนค่ะ\n(สาเหตุ: " + err.message + ")");
+      } finally {
+        setIsDownloadingCSV(false);
+      }
+    }
+
     const headers = ["ลำดับที่", "ชื่อ", "นามสกุล", "หน่วยสังกัด/สถานภาพ", "วัน_เดือน_ปี_เวลา_ที่เข้าชม"];
-    const rows = filteredVisitors.map((v, i) => [
+    const rows = recordsToExport.map((v, i) => [
       i + 1,
       v.firstName,
       v.lastName,
@@ -160,10 +195,20 @@ export default function RealtimeLogs({
 
         <button
           onClick={exportToCSV}
-          className="w-full md:w-auto px-4 py-2.5 bg-indigo-950 hover:bg-indigo-900 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          disabled={isDownloadingCSV}
+          className="w-full md:w-auto px-4 py-2.5 bg-indigo-950 hover:bg-indigo-900 disabled:bg-indigo-900 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
-          <Download className="w-4 h-4 text-emerald-400" />
-          <span>ดาวน์โหลดรายงาน (CSV)</span>
+          {isDownloadingCSV ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-emerald-400 rounded-full animate-spin" />
+              <span>กำลังดึงข้อมูลจาก Sheets...</span>
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>ดาวน์โหลดรายงาน (CSV)</span>
+            </>
+          )}
         </button>
       </div>
 

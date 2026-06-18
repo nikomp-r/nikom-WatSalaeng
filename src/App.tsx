@@ -12,6 +12,14 @@ import Dashboard from "./components/Dashboard";
 import AdminLogin from "./components/AdminLogin";
 import SettingsPanel from "./components/SettingsPanel";
 import { 
+  initAuth,
+  googleSignIn,
+  googleSignOut,
+  fetchVisitorsFromSheet,
+  appendVisitorToSheet,
+  getAccessToken
+} from "./lib/googleSheets";
+import { 
   Zap, 
   Sun, 
   Settings, 
@@ -72,6 +80,89 @@ export default function App() {
   // Running live clock state
   const [liveTime, setLiveTime] = useState<number>(Date.now());
 
+  // Google Sheets state variables
+  const [googleUser, setGoogleUser] = useState<any | null>(null);
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [isSyncingWithSheets, setIsSyncingWithSheets] = useState(false);
+
+  // Initialize Auth listeners
+  useEffect(() => {
+    const unsubscribe = initAuth(
+      (user, token) => {
+        setGoogleUser(user);
+        setGoogleToken(token);
+      },
+      () => {
+        setGoogleUser(null);
+        setGoogleToken(null);
+      }
+    );
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  const handleSyncWithGoogleSheets = async (tokenOverride?: string) => {
+    const token = tokenOverride || googleToken || getAccessToken();
+    if (!token) {
+      alert("⚠️ กรุณาเชื่อมต่อบัญชี Google ของท่านก่อนทำการซิงค์ข้อมูลค่ะ");
+      return;
+    }
+    setIsSyncingWithSheets(true);
+    try {
+      const sheetVisitors = await fetchVisitorsFromSheet(token);
+      if (sheetVisitors.length > 0) {
+        setVisitors((prev) => {
+          const merged = [...prev];
+          sheetVisitors.forEach((sv) => {
+            const exists = merged.some(
+              (v) =>
+                v.id === sv.id ||
+                (v.firstName.trim().toLowerCase() === sv.firstName.trim().toLowerCase() &&
+                 v.lastName.trim().toLowerCase() === sv.lastName.trim().toLowerCase())
+            );
+            if (!exists) {
+              merged.push(sv);
+            }
+          });
+          return merged.sort((a, b) => b.timestamp - a.timestamp);
+        });
+      }
+    } catch (err: any) {
+      console.error("Sync error:", err);
+      alert("⚠️ การดึงข้อมูลล้มเหลว: " + err.message);
+    } finally {
+      setIsSyncingWithSheets(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const res = await googleSignIn();
+      if (res) {
+        setGoogleUser(res.user);
+        setGoogleToken(res.accessToken);
+        // Automatically fetch and merge existing records from sheets on sign in
+        await handleSyncWithGoogleSheets(res.accessToken);
+      }
+    } catch (err: any) {
+      alert("⚠️ เกิดข้อผิดพลาดในขณะรับรองสิทธิ์ความปลอดภัย: " + err.message);
+    }
+  };
+
+  const handleGoogleSignOut = async () => {
+    try {
+      await googleSignOut();
+      setGoogleUser(null);
+      setGoogleToken(null);
+      alert("✅ ยกเลิกการเชื่อมโยงบัญชี Google และชีทเรียบร้อยแล้วค่ะ");
+    } catch (err: any) {
+      alert("⚠️ ออกจากระบบ Google ล้มเหลว: " + err.message);
+    }
+  };
+
   // Error/Success feedback
   const [adminPasswordError, setAdminPasswordError] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -118,7 +209,7 @@ export default function App() {
   }, []);
 
   // 3. Actions / Handlers
-  const handleAddVisitor = (firstName: string, lastName: string, organization: string) => {
+  const handleAddVisitor = async (firstName: string, lastName: string, organization: string) => {
     const newVisitor: VisitorRecord = {
       id: "v-" + Date.now() + "-" + Math.random().toString(36).substring(2, 7),
       firstName,
@@ -129,6 +220,16 @@ export default function App() {
     };
 
     setVisitors((prev) => [newVisitor, ...prev]);
+
+    const currentToken = googleToken || getAccessToken();
+    if (currentToken) {
+      try {
+        await appendVisitorToSheet(currentToken, newVisitor);
+        console.log("Registered and saved to Google Sheets successfully!");
+      } catch (err: any) {
+        console.error("Failed to append to Google Sheet on record:", err);
+      }
+    }
   };
 
   const handleDeleteVisitor = (id: string) => {
@@ -474,6 +575,12 @@ export default function App() {
                   onDeleteVisitor={handleDeleteVisitor}
                   onEditVisitor={handleEditVisitor}
                   onLogout={handleAdminLogout}
+                  googleUser={googleUser}
+                  googleToken={googleToken}
+                  isSyncingWithSheets={isSyncingWithSheets}
+                  onGoogleSignIn={handleGoogleSignIn}
+                  onGoogleSignOut={handleGoogleSignOut}
+                  onSyncWithGoogleSheets={handleSyncWithGoogleSheets}
                 />
               </motion.div>
             )}
