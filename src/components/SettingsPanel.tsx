@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { QuotaSettings, VisitorRecord } from "../types";
 import { 
   Settings, 
@@ -14,7 +14,10 @@ import {
   Cloud,
   ExternalLink,
   Database,
-  CheckCircle2
+  CheckCircle2,
+  FileSpreadsheet,
+  HardDrive,
+  Loader2
 } from "lucide-react";
 import { motion } from "motion/react";
 import RealtimeLogs from "./RealtimeLogs";
@@ -68,6 +71,62 @@ export default function SettingsPanel({
   const [newPassword, setNewPassword] = useState("");
   const [passMessage, setPassMessage] = useState("");
   const [quotaMessage, setQuotaMessage] = useState("");
+
+  // Google Drive backup state variables
+  const [isDriveBackingUp, setIsDriveBackingUp] = useState(false);
+  const [driveBackups, setDriveBackups] = useState<any[]>([]);
+  const [isLoadingDriveBackups, setIsLoadingDriveBackups] = useState(false);
+
+  const fetchDriveBackups = async (token: string) => {
+    setIsLoadingDriveBackups(true);
+    try {
+      const { listBackupsInDrive } = await import("../lib/googleSheets");
+      const files = await listBackupsInDrive(token);
+      setDriveBackups(files);
+    } catch (err) {
+      console.error("Failed to load drive backups:", err);
+    } finally {
+      setIsLoadingDriveBackups(false);
+    }
+  };
+
+  useEffect(() => {
+    if (googleToken) {
+      fetchDriveBackups(googleToken);
+    } else {
+      setDriveBackups([]);
+    }
+  }, [googleToken]);
+
+  const handleBackupToDrive = async () => {
+    if (!googleToken) return;
+    setIsDriveBackingUp(true);
+    try {
+      const { uploadBackupToDrive } = await import("../lib/googleSheets");
+      
+      // Generate CSV content
+      const headers = ["ลำดับที่", "ชื่อ", "นามสกุล", "หน่วยสังกัด/สถานภาพ", "วัน_เดือน_ปี_เวลา_ที่เข้าชม"];
+      const rows = visitors.map((v, i) => [
+        i + 1,
+        v.firstName,
+        v.lastName,
+        v.organization,
+        new Date(v.timestamp).toLocaleString("th-TH")
+      ]);
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.map(val => `"${val}"`).join(","))].join("\n");
+      
+      const fileName = `รายงานผู้เข้าชม_วัดแสลง_สำรอง_${new Date().toLocaleDateString("en-CA")}_${Date.now()}.csv`;
+      await uploadBackupToDrive(googleToken, csvContent, fileName);
+      alert("✅ สำรองไฟล์ข้อมูลลง Google Drive สำเร็จเรียบร้อยแล้วค่ะ!");
+      
+      // Refresh list
+      await fetchDriveBackups(googleToken);
+    } catch (err: any) {
+      alert("⚠️ เกิดข้อผิดพลาดในการอัปโหลดไฟล์: " + err.message);
+    } finally {
+      setIsDriveBackingUp(false);
+    }
+  };
 
   const handleUpdateQuotasSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,8 +194,8 @@ export default function SettingsPanel({
           </div>
         </div>
 
-        {/* Google Sheets Integration Section */}
-        <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200 rounded-3xl p-6 md:p-8 space-y-4">
+        {/* Google Sheets & Google Drive Integration Section */}
+        <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className="p-3.5 bg-emerald-100 text-emerald-800 rounded-2xl shadow-inner">
@@ -144,7 +203,7 @@ export default function SettingsPanel({
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
-                  <span>เชื่อมต่อ Google Sheets API</span>
+                  <span>เชื่อมต่อ Google Workspace (Google Sheets & Google Drive)</span>
                   {googleToken ? (
                     <span className="text-[10px] bg-emerald-200 text-emerald-950 border border-emerald-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
                       <span className="w-1 h-1 rounded-full bg-emerald-600" />
@@ -157,7 +216,7 @@ export default function SettingsPanel({
                   )}
                 </h3>
                 <p className="text-xs text-slate-500 font-semibold max-w-xl">
-                  บันทึกข้อมูลการลงทะเบียนรายละเอียดผู้เข้าเยี่ยมชม และสำรองข้อมูลไปที่ Google Sheets อย่างมีประสิทธิภาพ
+                  ซิงค์ข้อมูลผู้เข้าเยี่ยมชมแบบเรียลไทม์ และสำรองไฟล์ประวัติข้อมูล (CSV) ไปที่ Google Drive ของท่านอย่างปลอดภัย
                 </p>
               </div>
             </div>
@@ -171,7 +230,7 @@ export default function SettingsPanel({
                     className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSyncingWithSheets ? "animate-spin" : ""}`} />
-                    <span>{isSyncingWithSheets ? "กำลังซิงค์..." : "ดึง/ซิงค์จากชีทบัดนี้"}</span>
+                    <span>{isSyncingWithSheets ? "กำลังซิงค์ Google Sheets..." : "ดึง/ซิงค์จากชีทบัดนี้"}</span>
                   </button>
 
                   <button
@@ -187,7 +246,7 @@ export default function SettingsPanel({
                   className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
                 >
                   <Database className="w-4 h-4 text-emerald-400" />
-                  <span>เชื่อมต่อ Google Sheets</span>
+                  <span>เชื่อมต่อสารสนเทศ Google</span>
                 </button>
               )}
             </div>
@@ -214,6 +273,79 @@ export default function SettingsPanel({
               </a>
             </div>
           </div>
+
+          {/* Google Drive Specific Management section */}
+          {googleToken && (
+            <div className="bg-white/80 border border-emerald-100/80 rounded-2xl p-4 md:p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-xl">
+                    <HardDrive className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800">ระบบสำรองรายงานข้อมูลไปยัง Google Drive</h4>
+                    <p className="text-[10.5px] text-slate-400 font-medium">จัดการกับไฟล์สำรองประวัติผู้เข้าเยี่ยมชมวัดแสลงในรูปแบบไฟล์ CSV บนคลาวด์ไดรฟ์โดยตรง</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleBackupToDrive}
+                  disabled={isDriveBackingUp}
+                  className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-400 text-[11px] font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {isDriveBackingUp ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                      <span>กำลังอัปโหลด...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>อัปโหลดสำรอง (CSV) สู่ Google Drive</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* List of backed up files on drive */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">รายการไฟล์สำรองบน Google Drive ล่าสุด (10 ชิ้นล่าสุด)</span>
+                {isLoadingDriveBackups ? (
+                  <div className="flex items-center justify-center py-4 text-xs font-semibold text-slate-400 gap-1.5">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                    <span>กำลังโหลดรายการไฟล์บนไดรฟ์ของท่าน...</span>
+                  </div>
+                ) : driveBackups.length > 0 ? (
+                  <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-100 bg-white">
+                    {driveBackups.map((file) => (
+                      <div key={file.id} className="p-3 flex items-center justify-between gap-4 text-xs hover:bg-slate-50 trans-all">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div className="min-w-0">
+                            <span className="font-bold text-slate-700 block truncate" title={file.name}>{file.name}</span>
+                            <span className="text-[10px] text-slate-450 block font-mono">วันที่อัปโหลด: {new Date(file.createdTime).toLocaleString("th-TH")}</span>
+                          </div>
+                        </div>
+                        <a
+                          href={file.webViewLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg border border-slate-200 transition-all text-[10.5px] flex items-center gap-1 shrink-0"
+                        >
+                          <span>เปิดไฟล์</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-medium">
+                    ยังไม่มีไฟล์สำรองรายงานในไดรฟ์ของท่าน กดอัปโหลดเพื่อสำรองไฟล์แรกค่ะ
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {googleUser && (
             <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">

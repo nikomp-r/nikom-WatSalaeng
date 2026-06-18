@@ -10,6 +10,7 @@ export const auth = getAuth(app);
 // Configure Google Auth Provider
 export const provider = new GoogleAuthProvider();
 provider.addScope("https://www.googleapis.com/auth/spreadsheets");
+provider.addScope("https://www.googleapis.com/auth/drive");
 
 // Constant Spreadsheet config
 export const SPREADSHEET_ID = "1xDj8iqdqHHSnpa4-QCB2tck9kHS0zkenSNWGPtfcGcA";
@@ -186,5 +187,69 @@ export const appendVisitorToSheet = async (token: string, visitor: VisitorRecord
   if (!response.ok) {
     const errorJson = await response.json().catch(() => ({}));
     throw new Error(errorJson?.error?.message || `HTTP ${response.status} failed to append visitor`);
+  }
+};
+
+// Upload a CSV copy directly to user's Google Drive
+export const uploadBackupToDrive = async (token: string, csvContent: string, fileName: string): Promise<any> => {
+  const metadata = {
+    name: fileName,
+    mimeType: "text/csv"
+  };
+
+  const boundary = "314159265358979323846";
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const closeDelimiter = `\r\n--${boundary}--`;
+
+  const body = 
+    delimiter +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: text/csv; charset=UTF-8\r\n\r\n' +
+    csvContent +
+    closeDelimiter;
+
+  const url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`
+    },
+    body: body
+  });
+
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson?.error?.message || `HTTP ${res.status}`);
+  }
+
+  return await res.json();
+};
+
+// List CSV logs backups stored in Google Drive
+export const listBackupsInDrive = async (token: string): Promise<any[]> => {
+  const query = encodeURIComponent("name contains 'รายงานผู้เข้าชม_วัดแสลง' and mimeType = 'text/csv' and trashed = false");
+  const url = `https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=createdTime%20desc&fields=files(id,name,webViewLink,createdTime)&pageSize=10`;
+  
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!res.ok) {
+      const errorJson = await res.json().catch(() => ({}));
+      throw new Error(errorJson?.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    return data.files || [];
+  } catch (error) {
+    console.error("Error listing files from Google Drive:", error);
+    return [];
   }
 };
