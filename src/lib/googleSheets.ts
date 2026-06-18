@@ -16,8 +16,8 @@ provider.addScope("https://www.googleapis.com/auth/drive");
 export const SPREADSHEET_ID = "1xDj8iqdqHHSnpa4-QCB2tck9kHS0zkenSNWGPtfcGcA";
 export const SHEET_NAME = "รายชื่อผู้เยี่ยมชม";
 
-// In-memory token cache (as mandated by workspace-integration guidelines)
-let cachedAccessToken: string | null = null;
+// Token cache that persists across refreshes using localStorage fallback
+let cachedAccessToken: string | null = typeof window !== "undefined" ? localStorage.getItem("salaeng_google_token") : null;
 let isSigningIn = false;
 
 // Initialize auth state listener
@@ -27,16 +27,19 @@ export const initAuth = (
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
+      if (!cachedAccessToken && typeof window !== "undefined") {
+        cachedAccessToken = localStorage.getItem("salaeng_google_token");
+      }
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
       } else {
-        // Since Firebase doesn't persist the raw Google access token between reloads automatically,
-        // we might need to prompt the user to sign-in again with Google if we need access to Sheets,
-        // or we can allow them to re-integrate on click.
         if (onAuthFailure) onAuthFailure();
       }
     } else {
       cachedAccessToken = null;
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("salaeng_google_token");
+      }
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -52,6 +55,9 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
       throw new Error("ล้มเหลวในการดึง access token สิทธิ์ความปลอดภัยจาก Google");
     }
     cachedAccessToken = credential.accessToken;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("salaeng_google_token", credential.accessToken);
+    }
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
@@ -65,6 +71,9 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 export const googleSignOut = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("salaeng_google_token");
+  }
 };
 
 // Get cached token

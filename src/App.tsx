@@ -132,11 +132,20 @@ export default function App() {
       }
     } catch (err: any) {
       console.error("Sync error:", err);
-      alert("⚠️ การดึงข้อมูลล้มเหลว: " + err.message);
+      // Suppress alert on automatic load, show on manual trigger if desired, or handle gracefully
     } finally {
       setIsSyncingWithSheets(false);
     }
   };
+
+  // Auto-sync spreadsheet visitors once Google token is available (e.g. restoration from localStorage on reload)
+  useEffect(() => {
+    if (googleToken) {
+      handleSyncWithGoogleSheets(googleToken).catch((err) => {
+        console.warn("Initial auto sync info:", err);
+      });
+    }
+  }, [googleToken]);
 
   const handleGoogleSignIn = async () => {
     try {
