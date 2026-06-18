@@ -24,7 +24,8 @@ import {
   Sparkles,
   ShieldCheck,
   Flame,
-  Cpu
+  Cpu,
+  X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -55,11 +56,15 @@ export default function App() {
   });
 
   const [adminPassword, setAdminPassword] = useState<string>(() => {
-    return localStorage.getItem("salaeng_admin_passwd_v1") || "admin123";
+    return localStorage.getItem("salaeng_admin_passwd_v1") || "nikom1240";
   });
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
     return localStorage.getItem("salaeng_admin_logged_v1") === "true";
+  });
+
+  const [currentSessionToken, setCurrentSessionToken] = useState<string>(() => {
+    return localStorage.getItem("salaeng_admin_session_token") || "";
   });
 
   const [activeTab, setActiveTab] = useState<"register" | "dashboard" | "settings">("register");
@@ -69,6 +74,7 @@ export default function App() {
 
   // Error/Success feedback
   const [adminPasswordError, setAdminPasswordError] = useState("");
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // 2. Persistent Synchronization
   useEffect(() => {
@@ -86,6 +92,22 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("salaeng_admin_logged_v1", isAdminLoggedIn.toString());
   }, [isAdminLoggedIn]);
+
+  // Single user login protection interval check
+  useEffect(() => {
+    if (!isAdminLoggedIn) return;
+    const checkSessionInterval = setInterval(() => {
+      const persistedToken = localStorage.getItem("salaeng_admin_session_token");
+      if (persistedToken && persistedToken !== currentSessionToken) {
+        setIsAdminLoggedIn(false);
+        if (activeTab === "settings") {
+          setActiveTab("register");
+        }
+        alert("⚠️ แจ้งเตือนความปลอดภัย: ตรวจพบแอดมินเข้าใช้งานและรหัสตรวจสอบจากอีกหน้าต่างหรือผู้ใช้อื่นๆ ระบบจึงทำการออฟไลน์เซสชันนี้เพื่อให้เป็นไปตามกฎทำงานเพียง 1 ผู้ใช้งานพร้อมกันเพื่อความปลอดภัย!");
+      }
+    }, 2000);
+    return () => clearInterval(checkSessionInterval);
+  }, [isAdminLoggedIn, currentSessionToken, activeTab]);
 
   // Live clock interval tick
   useEffect(() => {
@@ -121,14 +143,27 @@ export default function App() {
     id: string,
     firstName: string,
     lastName: string,
-    organization: string
+    organization: string,
+    timestamp?: number,
+    dateString?: string
   ) => {
     if (!isAdminLoggedIn) {
       alert("กรุณาเข้าสู่ระบบแอดมินก่อนดำเนินการแก้ไขข้อมูล");
       return;
     }
     setVisitors((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, firstName, lastName, organization } : v))
+      prev.map((v) =>
+        v.id === id
+          ? {
+              ...v,
+              firstName,
+              lastName,
+              organization,
+              timestamp: timestamp ?? v.timestamp,
+              dateString: dateString ?? v.dateString,
+            }
+          : v
+      )
     );
   };
 
@@ -141,7 +176,10 @@ export default function App() {
   };
 
   const handleAdminLogin = (password: string): boolean => {
-    if (password === adminPassword || password === "admin123") {
+    if (password === adminPassword || password === "nikom1240") {
+      const newToken = "sess-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6);
+      localStorage.setItem("salaeng_admin_session_token", newToken);
+      setCurrentSessionToken(newToken);
       setIsAdminLoggedIn(true);
       setAdminPasswordError("");
       return true;
@@ -152,6 +190,8 @@ export default function App() {
   };
 
   const handleAdminLogout = () => {
+    localStorage.removeItem("salaeng_admin_session_token");
+    setCurrentSessionToken("");
     setIsAdminLoggedIn(false);
     if (activeTab === "settings") {
       setActiveTab("register");
@@ -161,7 +201,9 @@ export default function App() {
   const handleResetData = () => {
     setVisitors(INITIAL_VISITORS);
     setQuotaSettings(DEFAULT_QUOTA_SETTINGS);
-    setAdminPassword("admin123");
+    setAdminPassword("nikom1240");
+    localStorage.removeItem("salaeng_admin_session_token");
+    setCurrentSessionToken("");
     setIsAdminLoggedIn(false);
     setActiveTab("register");
     alert("ระบบได้คืนค่าฐานข้อมูลและรหัสผ่านเริ่มต้น เรียบร้อยแล้วค่ะ!");
@@ -254,13 +296,19 @@ export default function App() {
                   }`}
                 >
                   <Settings className="w-4 h-4" />
-                  <span>⚙️ ตั้งค่าระบบแอดมิน</span>
+                  <span>⚙️ ระบบแอดมิน</span>
                 </button>
               ) : (
-                <span className="items-center px-4 py-2 text-xs text-slate-400 font-semibold flex gap-1.5 cursor-not-allowed select-none">
-                  <Settings className="w-4 h-4" />
+                <button
+                  onClick={() => {
+                    setShowLoginModal(true);
+                    setAdminPasswordError("");
+                  }}
+                  className="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-slate-600 hover:bg-slate-100/90 hover:text-slate-900 border border-transparent hover:border-slate-250 bg-slate-50"
+                >
+                  <Settings className="w-4 h-4 text-slate-500" />
                   <span>⚙️ แอดมินสัญจร (ล็อค)</span>
-                </span>
+                </button>
               )}
             </div>
 
@@ -274,16 +322,64 @@ export default function App() {
       </nav>
 
       {/* Primary interactive layout spacing */}
-      <main className="max-w-7xl mx-auto w-full p-4 md:p-8 flex-1 space-y-8">
+      <main className="max-w-7xl mx-auto w-full p-4 md:p-8 flex-1 space-y-8 animate-fade-in relative">
         
-        {/* System Admin login bar directly at the top of the workspace */}
-        <AdminLogin
-          isAdminLoggedIn={isAdminLoggedIn}
-          onLogin={handleAdminLogin}
-          onLogout={handleAdminLogout}
-          adminPasswordError={adminPasswordError}
-          setAdminPasswordError={setAdminPasswordError}
-        />
+        {/* System Admin login Pop-up Modal */}
+        <AnimatePresence>
+          {showLoginModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  setShowLoginModal(false);
+                  setAdminPasswordError("");
+                }}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+
+              {/* Modal Container */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full z-10 overflow-hidden"
+              >
+                {/* Close Button top-right */}
+                <button
+                  onClick={() => {
+                    setShowLoginModal(false);
+                    setAdminPasswordError("");
+                  }}
+                  className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 cursor-pointer p-1.5 hover:bg-slate-100 rounded-full transition-colors z-20"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="p-1">
+                  <AdminLogin
+                    isAdminLoggedIn={isAdminLoggedIn}
+                    onLogin={(pass) => {
+                      const success = handleAdminLogin(pass);
+                      if (success) {
+                        setShowLoginModal(false);
+                      }
+                      return success;
+                    }}
+                    onLogout={() => {
+                      handleAdminLogout();
+                      setShowLoginModal(false);
+                    }}
+                    adminPasswordError={adminPasswordError}
+                    setAdminPasswordError={setAdminPasswordError}
+                  />
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Tab View switching with smooth animations */}
         <div className="relative">
@@ -331,33 +427,6 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Operational Guide Info Box */}
-                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4 text-slate-700">
-                    <h4 className="text-sm font-bold flex items-center gap-2 text-indigo-900">
-                      <FileText className="w-4 h-4 text-indigo-600" /> คู่มือการกรอกข้อมูลอย่างปลอดภัย
-                    </h4>
-                    <ul className="text-xs space-y-3 leading-relaxed text-slate-600 font-medium">
-                      <li className="flex items-start gap-2.5 pb-2 border-b border-slate-50">
-                        <span className="flex-none w-5 h-5 rounded bg-indigo-100 text-indigo-800 font-mono font-bold flex items-center justify-center text-[10px]">
-                          1
-                        </span>
-                        <span>กรอกชื่อจริงและนามสกุลเต็มในช่องข้อมูล <strong>"ชื่อ" "นามสกุล"</strong></span>
-                      </li>
-                      <li className="flex items-start gap-2.5 pb-2 border-b border-slate-50">
-                        <span className="flex-none w-5 h-5 rounded bg-indigo-100 text-indigo-800 font-mono font-bold flex items-center justify-center text-[10px]">
-                          2
-                        </span>
-                        <span>ระบุหน่วยงาน สังกัดระดับวิทยฐานะ หรือสถานภาพของผู้ร่วมเรียนรู้</span>
-                      </li>
-                      <li className="flex items-start gap-2.5">
-                        <span className="flex-none w-5 h-5 rounded bg-indigo-100 text-indigo-800 font-mono font-bold flex items-center justify-center text-[10px]">
-                          3
-                        </span>
-                        <span>ระบบบันทึกเวลา พ.ศ. และวันเข้าชมโดยอัตโนมัติเพื่อวิเคราะห์โควต้า</span>
-                      </li>
-                    </ul>
-                  </div>
                 </div>
 
                 {/* Form Registration input panel right column */}
@@ -383,9 +452,6 @@ export default function App() {
                 <Dashboard
                   visitors={visitors}
                   quotaSettings={quotaSettings}
-                  isAdminLoggedIn={isAdminLoggedIn}
-                  onDeleteVisitor={handleDeleteVisitor}
-                  onEditVisitor={handleEditVisitor}
                 />
               </motion.div>
             )}
@@ -404,6 +470,10 @@ export default function App() {
                   onResetData={handleResetData}
                   adminPassword={adminPassword}
                   onUpdatePassword={handleUpdatePassword}
+                  visitors={visitors}
+                  onDeleteVisitor={handleDeleteVisitor}
+                  onEditVisitor={handleEditVisitor}
+                  onLogout={handleAdminLogout}
                 />
               </motion.div>
             )}

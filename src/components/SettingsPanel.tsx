@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { QuotaSettings } from "../types";
-import { Settings, Save, RotateCcw, ShieldAlert, Sliders, Info, Server, Key, RefreshCw } from "lucide-react";
+import { QuotaSettings, VisitorRecord } from "../types";
+import { Settings, Save, RotateCcw, ShieldAlert, Sliders, Info, Server, Key, RefreshCw, LogOut } from "lucide-react";
 import { motion } from "motion/react";
+import RealtimeLogs from "./RealtimeLogs";
 
 interface SettingsPanelProps {
   quotaSettings: QuotaSettings;
@@ -9,6 +10,17 @@ interface SettingsPanelProps {
   onResetData: () => void;
   adminPassword: string;
   onUpdatePassword: (newPass: string) => void;
+  visitors: VisitorRecord[];
+  onDeleteVisitor: (id: string) => void;
+  onEditVisitor: (
+    id: string,
+    firstName: string,
+    lastName: string,
+    organization: string,
+    timestamp: number,
+    dateString: string
+  ) => void;
+  onLogout: () => void;
 }
 
 export default function SettingsPanel({
@@ -17,6 +29,10 @@ export default function SettingsPanel({
   onResetData,
   adminPassword,
   onUpdatePassword,
+  visitors,
+  onDeleteVisitor,
+  onEditVisitor,
+  onLogout,
 }: SettingsPanelProps) {
   const [dailyVal, setDailyVal] = useState(quotaSettings.daily.toString());
   const [monthlyVal, setMonthlyVal] = useState(quotaSettings.monthly.toString());
@@ -64,15 +80,33 @@ export default function SettingsPanel({
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-amber-100 shadow-xl overflow-hidden p-6 md:p-8 space-y-8">
-      
-      {/* Title */}
-      <div className="flex items-center gap-2 border-b border-gray-100 pb-4">
-        <Sliders className="w-5 h-5 text-amber-500 animate-spin" />
-        <h2 className="text-lg md:text-xl font-bold text-gray-900">
-          ตั้งค่าระบบงานควบคุมและสิทธิ์แอดมิน
-        </h2>
-      </div>
+    <div className="space-y-8">
+      <div className="bg-white rounded-3xl border border-amber-100 shadow-xl overflow-hidden p-6 md:p-8 space-y-8">
+        
+        {/* Title & Controls Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-2">
+            <Sliders className="w-5 h-5 text-indigo-700 animate-spin-slow" />
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">
+              ⚙️ ระบบแอดมิน (Admin Control Panel)
+            </h2>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-1.5 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>ระบบป้องกัน Single Active Session</span>
+            </span>
+            
+            <button
+              onClick={onLogout}
+              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm border border-rose-700 flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>ออกจากระบบ (Logout)</span>
+            </button>
+          </div>
+        </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
@@ -141,7 +175,7 @@ export default function SettingsPanel({
             <div className="space-y-1">
               <label className="text-xs font-semibold text-gray-600">รหัสผ่านสำหรับเข้าแก้ไขข้อมูล</label>
               <input
-                type="text"
+                type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="กรอกรหัสผ่านใหม่ที่นี่"
@@ -194,5 +228,13 @@ export default function SettingsPanel({
         </div>
       </div>
     </div>
-  );
+
+    {/* Realtime logs block moves here under Admin section */}
+    <RealtimeLogs 
+      visitors={visitors} 
+      onDeleteVisitor={onDeleteVisitor} 
+      onEditVisitor={onEditVisitor} 
+    />
+  </div>
+);
 }

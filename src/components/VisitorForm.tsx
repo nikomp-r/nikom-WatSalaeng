@@ -49,8 +49,24 @@ export default function VisitorForm({
     e.preventDefault();
     setErrorMsg("");
 
-    if (!firstName.trim() || !lastName.trim() || !organization.trim()) {
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+    const trimmedOrg = organization.trim();
+
+    if (!trimmedFirst || !trimmedLast || !trimmedOrg) {
       setErrorMsg("กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง");
+      return;
+    }
+
+    // Duplicate name prevention constraint (case-insensitive and trimmed comparison)
+    const isDuplicate = visitors.some(
+      (v) =>
+        v.firstName.trim().toLowerCase() === trimmedFirst.toLowerCase() &&
+        v.lastName.trim().toLowerCase() === trimmedLast.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      setErrorMsg(`ขออภัย! มีรายชื่อคุณ ${trimmedFirst} ${trimmedLast} ลงทะเบียนในระบบเรียบร้อยแล้ว (ไม่สามารถลงทะเบียนซ้ำได้)`);
       return;
     }
 
@@ -59,10 +75,10 @@ export default function VisitorForm({
       return;
     }
 
-    onAddVisitor(firstName.trim(), lastName.trim(), organization.trim());
+    onAddVisitor(trimmedFirst, trimmedLast, trimmedOrg);
     
     setSuccessInfo({
-      name: `${firstName.trim()} ${lastName.trim()}`,
+      name: `${trimmedFirst} ${trimmedLast}`,
       timestamp: Date.now(),
     });
 
@@ -92,60 +108,6 @@ export default function VisitorForm({
           <h2 className="text-xl font-bold text-indigo-950 tracking-tight">
             กรอกข้อมูลรายละเอียดผู้เข้าเยี่ยมชม
           </h2>
-        </div>
-      </div>
-
-      {/* Quota Banner Indicator for Today - Beautiful Geometric slate cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {/* Daily Progress */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 border-b-4 border-sky-500 p-4 flex flex-col justify-between transition-colors">
-          <div>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">โควต้าผู้เข้าชมต่อวัน</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-1">
-              {todayCount} <span className="text-slate-400 text-sm font-normal">/ {quotaSettings.daily} คน</span>
-            </h3>
-          </div>
-          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-            <div 
-              className="bg-sky-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (todayCount / quotaSettings.daily) * 100)}%` }}
-            />
-          </div>
-          {isDailyFull && (
-            <p className="text-[10px] text-rose-600 font-bold mt-1">● เต็มจำนวนโควต้าแล้ว</p>
-          )}
-        </div>
-
-        {/* Monthly Progress */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 border-b-4 border-emerald-500 p-4 flex flex-col justify-between transition-colors">
-          <div>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">โควต้าผู้เข้าชมต่อเดือน</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-1">
-              {thisMonthCount} <span className="text-slate-400 text-sm font-normal">/ {quotaSettings.monthly} คน</span>
-            </h3>
-          </div>
-          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-            <div 
-              className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (thisMonthCount / quotaSettings.monthly) * 100)}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Yearly Progress */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 border-b-4 border-amber-500 p-4 flex flex-col justify-between transition-colors">
-          <div>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">สถิติสะสมผู้เข้าชมปีนี้</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-1">
-              {thisYearCount} <span className="text-slate-400 text-sm font-normal">/ {quotaSettings.yearly} คน</span>
-            </h3>
-          </div>
-          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
-            <div 
-              className="bg-amber-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (thisYearCount / quotaSettings.yearly) * 100)}%` }}
-            />
-          </div>
         </div>
       </div>
 
@@ -217,7 +179,7 @@ export default function VisitorForm({
             type="text"
             value={organization}
             onChange={(e) => setOrganization(e.target.value)}
-            placeholder="เช่น นักเรียนชั้น ม.3, อบต.แสลง, ข้าราชการครู, บุคคลทั่วไป"
+            placeholder="เช่น เกษตรกร, ผู้ประกอบการ, บริษัทยิ่งใหญ่, โรงเรียนวัดแสลง"
             disabled={isDailyFull && !isAdminLoggedIn}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400"
           />
@@ -226,7 +188,7 @@ export default function VisitorForm({
         {/* Auto Timestamp Info Label */}
         <div className="pt-2 flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
           <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-          <span>ระบบบันทึก <strong>วัน เดือน ปี และเวลาวิทยฐานะ</strong> แบบอัตโนมัติ</span>
+          <span>ระบบบันทึกข้อมูล วัน เดือน ปี และเวลา ของการกรอกข้อมูลให้อัตโนมัติ</span>
         </div>
 
         {errorMsg && (

@@ -90,22 +90,15 @@ export default function AdminLogin({
               </span>
               <input
                 id="admin-password-input"
-                type={showPassword ? "text" : "password"}
+                type="password"
                 value={passwordInput}
                 onChange={(e) => {
                   setPasswordInput(e.target.value);
                   if (adminPasswordError) setAdminPasswordError("");
                 }}
-                placeholder="รหัสผ่านแอดมิน (เริ่มต้น: admin123)"
-                className="w-full pl-9 pr-14 py-2.5 bg-slate-50/70 border border-slate-200 text-slate-800 placeholder:text-slate-400 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all font-mono"
+                placeholder="ระบุรหัสผ่านแอดมิน"
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-50/70 border border-slate-200 text-slate-800 placeholder:text-slate-400 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all font-mono"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-500 hover:text-amber-600 cursor-pointer"
-              >
-                {showPassword ? "ซ่อน" : "แสดง"}
-              </button>
             </div>
             <button
               id="btn-admin-login"
