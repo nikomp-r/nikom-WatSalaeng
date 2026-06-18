@@ -85,11 +85,68 @@ const parseRowToVisitor = (row: any[], index: number): VisitorRecord => {
 };
 
 // Fetch visitors from Google Sheet
-export const fetchVisitorsFromSheet = async (token: string): Promise<VisitorRecord[]> => {
-  const range = encodeURIComponent(`${SHEET_NAME}!A2:F`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}`;
-  
+export const ensureSheetTabExists = async (token: string): Promise<string> => {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
   try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      const errorJson = await res.json().catch(() => ({}));
+      throw new Error(errorJson?.error?.message || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const sheets = data.sheets || [];
+    
+    const exists = sheets.some((s: any) => s.properties?.title === SHEET_NAME);
+    if (exists) {
+      return SHEET_NAME;
+    }
+
+    // Attempt to dynamically create the sheet tab name "รายชื่อผู้เยี่ยมชม"
+    const batchUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`;
+    const batchRes = await fetch(batchUpdateUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: SHEET_NAME
+              }
+            }
+          }
+        ]
+      })
+    });
+
+    if (batchRes.ok) {
+      console.log(`Successfully created sheet tab: ${SHEET_NAME}`);
+      return SHEET_NAME;
+    } else {
+      console.warn("Unable to create specified sheet tab, checking available options...");
+      if (sheets.length > 0 && sheets[0].properties?.title) {
+        return sheets[0].properties.title;
+      }
+      return "Sheet1";
+    }
+  } catch (error) {
+    console.error("Error in ensureSheetTabExists, fallback to Sheet1:", error);
+    return "Sheet1";
+  }
+};
+
+// Fetch visitors from Google Sheet
+export const fetchVisitorsFromSheet = async (token: string): Promise<VisitorRecord[]> => {
+  try {
+    const activeSheet = await ensureSheetTabExists(token);
+    const range = encodeURIComponent(`${activeSheet}!A2:F`);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}`;
+    
     const res = await fetch(url, {
       method: "GET",
       headers: {
@@ -114,8 +171,9 @@ export const fetchVisitorsFromSheet = async (token: string): Promise<VisitorReco
 };
 
 // Create sheet headers if sheet is empty/new
-export const initSheetHeaders = async (token: string): Promise<void> => {
-  const range = encodeURIComponent(`${SHEET_NAME}!A1:F1`);
+export const initSheetHeaders = async (token: string, activeSheetName?: string): Promise<string> => {
+  const activeSheet = activeSheetName || await ensureSheetTabExists(token);
+  const range = encodeURIComponent(`${activeSheet}!A1:F1`);
   const checkUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}`;
   
   try {
@@ -127,7 +185,7 @@ export const initSheetHeaders = async (token: string): Promise<void> => {
       const data = await checkRes.json();
       if (data.values && data.values.length > 0) {
         // Headers already exist
-        return;
+        return activeSheet;
       }
     }
 
@@ -140,7 +198,7 @@ export const initSheetHeaders = async (token: string): Promise<void> => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        range: `${SHEET_NAME}!A1:F1`,
+        range: `${activeSheet}!A1:F1`,
         majorDimension: "ROWS",
         values: [
           ["ID", "ชื่อ", "นามสกุล", "หน่วยสังกัด/สถานภาพ", "Timestamp", "dateString"]
@@ -150,14 +208,15 @@ export const initSheetHeaders = async (token: string): Promise<void> => {
   } catch (err) {
     console.error("Failed to check/init headers in spreadsheet:", err);
   }
+  return activeSheet;
 };
 
 // Append a single visitor to Google Sheet
 export const appendVisitorToSheet = async (token: string, visitor: VisitorRecord): Promise<void> => {
-  // Ensure headers are initialized first
-  await initSheetHeaders(token);
+  // Ensure headers are initialized and get the appropriate sheet tab name to append to
+  const activeSheet = await initSheetHeaders(token);
 
-  const range = encodeURIComponent(`${SHEET_NAME}!A:F`);
+  const range = encodeURIComponent(`${activeSheet}!A:F`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED`;
 
   const values = [
@@ -178,7 +237,7 @@ export const appendVisitorToSheet = async (token: string, visitor: VisitorRecord
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      range: `${SHEET_NAME}!A:F`,
+      range: `${activeSheet}!A:F`,
       majorDimension: "ROWS",
       values
     })

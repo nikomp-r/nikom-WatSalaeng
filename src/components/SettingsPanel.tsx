@@ -72,6 +72,11 @@ export default function SettingsPanel({
   const [passMessage, setPassMessage] = useState("");
   const [quotaMessage, setQuotaMessage] = useState("");
 
+  // Troubleshoot authorized domains states
+  const [copiedDev, setCopiedDev] = useState(false);
+  const [copiedShared, setCopiedShared] = useState(false);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+
   // Google Drive backup state variables
   const [isDriveBackingUp, setIsDriveBackingUp] = useState(false);
   const [driveBackups, setDriveBackups] = useState<any[]>([]);
@@ -353,6 +358,133 @@ export default function SettingsPanel({
               <span>ล็อกอินบัญชี Google อยู่ในขณะนี้: <strong>{googleUser.email}</strong> ({googleUser.displayName})</span>
             </p>
           )}
+
+          {/* Dynamic domain troubleshooting card */}
+          <div className="pt-4 border-t border-dashed border-emerald-200/60">
+            <button
+              type="button"
+              onClick={() => setShowTroubleshoot(!showTroubleshoot)}
+              className="text-xs text-emerald-800 hover:text-emerald-900 font-bold flex items-center gap-2 bg-emerald-100 hover:bg-emerald-200 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm select-none"
+            >
+              <span>💡 เจอปัญหา "Firebase: Error (auth/unauthorized-domain)" หรือสำรองไม่เข้าคลาวด์? คลิกดูวิธีแก้ไขทันที</span>
+              <span className="text-[10px] font-bold">
+                {showTroubleshoot ? "▲ ซ่อนคู่มือ" : "▼ แสดงคู่มือแก้ไข"}
+              </span>
+            </button>
+
+            {showTroubleshoot && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="mt-4 bg-white/95 border border-amber-200 rounded-2xl p-5 space-y-4 text-xs text-slate-700 shadow-sm overflow-hidden"
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className="p-1 px-1.5 bg-amber-100 text-amber-800 rounded font-bold text-[10px] shrink-0">สาเหตุข้อผิดพลาด</div>
+                  <p className="leading-relaxed font-semibold text-slate-600">
+                    เนื่องจากระบบจำลองความปลอดภัยของ AI Studio ทำการรันเว็บแอปพริเคชันบนโดเมนแซนด์บ็อกซ์ชั่วคราว ทำให้ Firebase ปฏิเสธสิทธิ์การเข้าถึงความปลอดภัย (Unauthorized Domain) จนกว่าท่านจะนำชื่อโดเมนของหน้านี้ไปกรอกอนุญาตเพิ่มเติมที่หน้าต่างคอนโซล Firebase ของท่านค่ะ
+                  </p>
+                </div>
+
+                <div className="space-y-2 border-t border-dashed border-slate-200 pt-3">
+                  <span className="font-black text-slate-800 block text-[13px] text-amber-800">🛠️ แนะนำขั้นตอนการแก้ไขใน 3 ข้อสั้นๆ:</span>
+                  
+                  <div className="space-y-3 font-medium text-slate-600 pl-1">
+                    <p className="flex items-start gap-1.5 leading-relaxed">
+                      <span className="font-black text-amber-700">1.</span>
+                      <span>
+                        เปิดหน้าตั้งค่าความปลอดภัยของโครงการ Firebase ID ของคุณ โดยคลิกเปิดหน้าคอนโซลโดยตรงที่นี่: <br />
+                        <a
+                          href="https://console.firebase.google.com/project/ai-studio-applet-webapp-a0503/authentication/settings"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-indigo-700 hover:text-indigo-800 font-bold underline mt-1"
+                        >
+                          <span>เปิดหน้า Firebase Authentication Settings ↗</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </span>
+                    </p>
+
+                    <p className="flex items-start gap-1.5 leading-relaxed">
+                      <span className="font-black text-amber-700">2.</span>
+                      <span>
+                        เลื่อนลงมามองหาหัวข้อย่อยชื่อ <strong>"Authorized domains" (โดเมนที่ได้รับอนุญาต)</strong> แล้วคลิกปุ่ม <strong>"Add domain" (เพิ่มโดเมนใหม่)</strong>
+                      </span>
+                    </p>
+
+                    <div className="flex items-start gap-1.5 leading-relaxed">
+                      <span className="font-black text-amber-700 shrink-0">3.</span>
+                      <div className="space-y-2.5 w-full">
+                        <span>คลิกปุ่มคัดลอกด้านล่างเพื่อ copy โดเมนทั้ง 2 ตัวนี้แล้วนำไปกรอกกดเพิ่ม (Add) ลงไปใน Firebase (ไม่ต้องใส่ https:// หรือเครื่องหมายใดๆ ด้านหลัง):</span>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          {/* Dev Domain Box */}
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 shadow-inner">
+                            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">โดเมนสำหรับทดสอบพัฒนา (Development Domain)</span>
+                            <div className="flex items-center justify-between gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100">
+                              <code className="font-mono text-[10.5px] font-bold text-indigo-950 select-all break-all pr-1">
+                                {(() => {
+                                  const host = typeof window !== "undefined" ? window.location.hostname : "ais-dev-2s4wc4heyaup26qob2vft7-799010934055.asia-southeast1.run.app";
+                                  const isDevFlg = host.includes("-dev-");
+                                  return isDevFlg ? host : host.replace("-pre-", "-dev-");
+                                })()}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const host = typeof window !== "undefined" ? window.location.hostname : "ais-dev-2s4wc4heyaup26qob2vft7-799010934055.asia-southeast1.run.app";
+                                  const isDevFlg = host.includes("-dev-");
+                                  const val = isDevFlg ? host : host.replace("-pre-", "-dev-");
+                                  navigator.clipboard.writeText(val);
+                                  setCopiedDev(true);
+                                  setTimeout(() => setCopiedDev(false), 2000);
+                                }}
+                                className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-800 font-bold text-[10px] rounded border border-indigo-100 transition-all shrink-0 cursor-pointer"
+                              >
+                                {copiedDev ? "คัดลอกสำเร็จ!" : "กดคัดลอก"}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Shared Domain Box */}
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 shadow-inner">
+                            <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">โดเมนหลักสำหรับแชร์ต่อ (Shared Domain)</span>
+                            <div className="flex items-center justify-between gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100">
+                              <code className="font-mono text-[10.5px] font-bold text-indigo-950 select-all break-all pr-1">
+                                {(() => {
+                                  const host = typeof window !== "undefined" ? window.location.hostname : "ais-dev-2s4wc4heyaup26qob2vft7-799010934055.asia-southeast1.run.app";
+                                  const isDevFlg = host.includes("-dev-");
+                                  return isDevFlg ? host.replace("-dev-", "-pre-") : host;
+                                })()}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const host = typeof window !== "undefined" ? window.location.hostname : "ais-dev-2s4wc4heyaup26qob2vft7-799010934055.asia-southeast1.run.app";
+                                  const isDevFlg = host.includes("-dev-");
+                                  const val = isDevFlg ? host.replace("-dev-", "-pre-") : host;
+                                  navigator.clipboard.writeText(val);
+                                  setCopiedShared(true);
+                                  setTimeout(() => setCopiedShared(false), 2000);
+                                }}
+                                className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-800 font-bold text-[10px] rounded border border-indigo-100 transition-all shrink-0 cursor-pointer"
+                              >
+                                {copiedShared ? "คัดลอกสำเร็จ!" : "กดคัดลอก"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 text-amber-900 border border-amber-200/60 rounded-xl p-3.5 font-semibold text-[11px] leading-relaxed">
+                  💡 <strong>คำแนะนำเพิ่มเติม:</strong> เมื่อบันทึกแจ้งข้อมูลใน Firebase console เรียบร้อยแล้ว ให้ทำการรีเฟรชหน้าบราวเซอร์ของแอปฯ นี้หนึ่งครั้ง <strong>แล้วกลับมากดเชื่อมต่อ Google ใหม่อีกหน</strong> ระบบก็จะจดจำและลงทะเบียนไปที่ชีทแบบเรียลไทม์ได้อย่างสมบูรณ์แบบโดยสงบแน่นอนค่ะ!
+                </div>
+              </motion.div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

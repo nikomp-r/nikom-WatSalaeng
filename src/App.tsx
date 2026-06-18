@@ -148,7 +148,20 @@ export default function App() {
         await handleSyncWithGoogleSheets(res.accessToken);
       }
     } catch (err: any) {
-      alert("⚠️ เกิดข้อผิดพลาดในขณะรับรองสิทธิ์ความปลอดภัย: " + err.message);
+      if (
+        (err.message && err.message.includes("unauthorized-domain")) ||
+        (err.code && err.code.includes("unauthorized-domain"))
+      ) {
+        alert(
+          "⚠️ ตรวจพบระบบแจ้งเตือนสิทธิ์ความปลอดภัย: Firebase (auth/unauthorized-domain)\n\n" +
+          "วิธีแก้ไขกู้คืนสิทธิการจัดเก็บข้อมูลจริง:\n" +
+          "1. เข้าไปที่เมนู 'ตั้งค่าระดับแอดมิน (Admin)' ด้านบนขวา\n" +
+          "2. เลื่อนลงมาใต้หัวข้อ Google ด้านล่าง จะพบแถบกล่องสีเขียว\n" +
+          "3. สามารถคลิกเปิดดูคำแนะนำเพื่อกด 'คัดลอกชื่อโดเมน' สำหรับนำระบุเพิ่มสิทธิ์ในหน้าต่าง Firebase console ของท่านความยาวไม่เกิน 1 นาทีเพื่อความปลอดภัยระดับคลาวด์ค่ะ!"
+        );
+      } else {
+        alert("⚠️ เกิดข้อผิดพลาดในขณะรับรองสิทธิ์ความปลอดภัย: " + err.message);
+      }
     }
   };
 
