@@ -2,7 +2,7 @@ export interface VisitorRecord {
   id: string;
   firstName: string;
   lastName: string;
-  organization: string; // หน่วยสังกัด/สถานภาพ
+  organization: string; // หน่วยงานสังกัด/สถานภาพ
   timestamp: number; // For exact date-time
   dateString: string; // YYYY-MM-DD
 }

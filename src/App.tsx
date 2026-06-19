@@ -348,17 +348,17 @@ export default function App() {
           <div className="text-center lg:text-left space-y-2">
             <div className="inline-flex items-center gap-1.5 bg-emerald-400 text-indigo-950 px-3.5 py-1.5 rounded-lg border border-emerald-300 text-xs font-bold tracking-wide uppercase shadow-sm">
               <Sun className="w-4 h-4 animate-spin-slow text-indigo-900" />
-              <span>ศูนย์เรียนรู้เทคโนโลยีพลังงานทดแทนสะสมวัดแสลง</span>
+              <span>ศูนย์เรียนรู้เทคโนโลยีการผลิตไฟฟ้าด้วยพลังงานแสงอาทิตย์ (Solar Rooftop)</span>
             </div>
             
             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight">
-              ระบบบันทึกข้อมูลการเข้าเยี่ยมชมศูนย์เรียนรู้ระบบผลิตพลังงานไฟฟ้า
+              ระบบบันทึกข้อมูลการเข้าเยี่ยมชมศูนย์เรียนรู้ระบบผลิตไฟฟ้าพลังงานแสงอาทิตย์
             </h1>
             
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 text-xs md:text-sm text-indigo-200 font-medium">
               <span className="flex items-center gap-1">
                 <Building2 className="w-4 h-4 text-emerald-400" />
-                <span>โรงเรียนวัดแสลง (Wat Salaeng School Energy Learning Center)</span>
+                <span>โรงเรียนวัดแสลง (Wat Salaeng School PV Learning Center)</span>
               </span>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function App() {
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">วัน/เวลา ตรวจสอบเข้าชม</p>
+              <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">วัน/เวลา เข้าศึกษาดูงาน</p>
               <p className="text-sm font-semibold text-emerald-400 mt-0.5">
                 {formatThaiDate(liveTime, true)}
               </p>
@@ -406,7 +406,7 @@ export default function App() {
                 }`}
               >
                 <Users className="w-4 h-4" />
-                <span>📊 แผงรายงานสรุปและสถิติ (Dashboard)</span>
+                <span>📊 ระบบรายงานสถิติและสรุปข้อมูล (Dashboard)</span>
               </button>
 
               {isAdminLoggedIn ? (
@@ -430,7 +430,7 @@ export default function App() {
                   className="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-slate-600 hover:bg-slate-100/90 hover:text-slate-900 border border-transparent hover:border-slate-250 bg-slate-50"
                 >
                   <Settings className="w-4 h-4 text-slate-500" />
-                  <span>⚙️ แอดมินสัญจร (ล็อค)</span>
+                  <span>⚙️ ระบบแอดมิน (ต้องเข้ารหัส)</span>
                 </button>
               )}
             </div>
@@ -526,27 +526,27 @@ export default function App() {
                     </div>
                     <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs uppercase tracking-wider mb-3">
                       <Sparkles className="w-4 h-4" />
-                      <span>ศูนย์วิจัยระบบการผลิตพลังงานไฟฟ้า</span>
+                      <span>ระบบรายงานข้อมูลสถิติการเข้าเยี่ยมชมศึกษาดูงานศูนย์เรียนรู้</span>
                     </div>
                     <h3 className="text-lg font-bold leading-tight">
-                      ศูนย์จองและควบคุมระดับพลังงานชุมชน
+                      ศูนย์เรียนรู้ระบบผลิตไฟฟ้าพลังงานแสงอาทิตย์
                     </h3>
                     <p className="text-xs text-indigo-100/90 mt-2 leading-relaxed">
-                      เพื่อตอบสนองนโยบายความยั่งยืน โรงเรียนวัดแสลงได้รวบรวมแผงพัฒนาพลังงานแสงอาทิตย์ร่วมกับองค์กรปกครองส่วนท้องถิ่น เพื่อเปิดคลังองค์ความรู้ให้เข้าศึกษาค้นคว้าประยุกต์ใช้จริง
+                      เพื่อตอบสนองนโยบายพลังงานสะอาดอย่างยั่งยืน คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยราชภัฏรำไพพรรณี และโรงเรียนวัดแสลงได้รวมมือกันพัฒนาศูนย์เรียนรู้ระบบผลิตไฟฟ้าพลังงานแสงอาทิตย์ร่วมกับเทศบาลตำบลแสลง เพื่อเปิดคลังความรู้ให้บุคคลทั่วไปได้เข้าศึกษาดูงานเพื่อนำความรู้ไปประยุกต์ใช้ได้จริง
                     </p>
 
                     <div className="mt-5 space-y-2.5 border-t border-indigo-800 pt-4 text-xs">
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                        <span>โครงข่ายแผงโซลาร์เซลล์แบบเชื่อมต่อสายตรง</span>
+                        <span>โครงข่ายระบบผลิตไฟฟ้าโซลาร์เซลล์แบบเชื่อมต่อสายตรง</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                        <span>ขีดจำกัดโควต้าผู้เยี่ยมชมต่อวันเพื่อป้องกันความปลอดภัย</span>
+                        <span>มีบุคลากรคอยให้คำแนะนำผู้เยี่ยมชมเพื่อความปลอดภัย</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                        <span>รายงาน Dashboard แสดงผล Real-time เปรียบสถิติ</span>
+                        <span>รายงาน Dashboard แสดงผล Real-time ข้อมูลสถิติผู้เข้าเยี่ยมชม</span>
                       </div>
                     </div>
                   </div>
@@ -616,15 +616,15 @@ export default function App() {
           <div className="inline-flex items-center gap-1.5 bg-indigo-950 text-indigo-200 px-3 py-1 rounded border border-indigo-800 font-semibold text-[10px] tracking-wider uppercase">
             <span>Security Certification: Master Access Only</span>
             <span className="h-3.5 w-[1px] bg-indigo-800 mx-1"></span>
-            <span className="text-emerald-400">ฐานข้อมูลผ่านการรหัสความปลอดภัย</span>
+            <span className="text-emerald-400">ฐานข้อมูลมีรหัสผ่านเพื่อความปลอดภัย</span>
           </div>
           
           <p className="max-w-xl mx-auto leading-relaxed text-slate-500">
-            ระบบจัดเก็บข้อมูลผู้เข้าเยี่ยมชมนี้บันทึกข้อมูลแบบเข้ารหัสภายในหน่วยประมวลผล เพื่อสนับสนุนการวิจัยต้นแบบระบบผลิตกระแสไฟฟ้าด้วยพลังงานแสงอาทิตย์ โรงเรียนวัดแสลง
+            ระบบจัดเก็บข้อมูลผู้เข้าเยี่ยมชมนี้บันทึกข้อมูลแบบเข้ารหัสภายในหน่วยประมวลผล เพื่อสนับสนุนการเก็บข้อมูลของศูนย์เรียนรู้ระบบผลิตไฟฟ้าพลังงานแสงอาทิตย์ ณ โรงเรียนวัดแสลง(เขมราษฎร์วิทยาคาร)
           </p>
           
           <p className="text-[10px] text-slate-600 pt-2 border-t border-slate-800">
-            © {new Date().getFullYear() + 543} โรงเรียนวัดแสลง สังกัดสำนักงานเขตพื้นที่การศึกษาประถมศึกษาจันทบุรี. All Rights Reserved.
+            © {new Date().getFullYear() + 543} โรงเรียนวัดแสลง(เขมราษฎร์) สังกัดสำนักงานเขตพื้นที่การศึกษาประถมศึกษาจันทบุรี. All Rights Reserved.
           </p>
         </div>
       </footer>
