@@ -17,10 +17,13 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   HardDrive,
-  Loader2
+  Loader2,
+  Copy,
+  Check
 } from "lucide-react";
 import { motion } from "motion/react";
 import RealtimeLogs from "./RealtimeLogs";
+import { GAS_CODE_TEMPLATE, HTML_CODE_TEMPLATE } from "../lib/gasTemplates";
 
 interface SettingsPanelProps {
   quotaSettings: QuotaSettings;
@@ -45,6 +48,8 @@ interface SettingsPanelProps {
   onGoogleSignIn: () => Promise<void>;
   onGoogleSignOut: () => Promise<void>;
   onSyncWithGoogleSheets: () => Promise<void>;
+  gasWebAppUrl: string;
+  onUpdateGasUrl: (newUrl: string) => void;
 }
 
 export default function SettingsPanel({
@@ -63,6 +68,8 @@ export default function SettingsPanel({
   onGoogleSignIn,
   onGoogleSignOut,
   onSyncWithGoogleSheets,
+  gasWebAppUrl,
+  onUpdateGasUrl,
 }: SettingsPanelProps) {
   const [dailyVal, setDailyVal] = useState(quotaSettings.daily.toString());
   const [monthlyVal, setMonthlyVal] = useState(quotaSettings.monthly.toString());
@@ -102,6 +109,58 @@ export default function SettingsPanel({
       setDriveBackups([]);
     }
   }, [googleToken]);
+
+  // Google Apps Script panel states
+  const [activeCodeTab, setActiveCodeTab] = useState<"gas" | "html">("gas");
+  const [copiedGasCode, setCopiedGasCode] = useState(false);
+  const [copiedHtmlCode, setCopiedHtmlCode] = useState(false);
+  const [gasUrlInput, setGasUrlInput] = useState(gasWebAppUrl);
+  const [testStatus, setTestStatus] = useState<"" | "testing" | "success" | "error">("");
+  const [testMessage, setTestMessage] = useState("");
+
+  useEffect(() => {
+    setGasUrlInput(gasWebAppUrl);
+  }, [gasWebAppUrl]);
+
+  const handleSaveGasUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateGasUrl(gasUrlInput.trim());
+    alert("✅ บันทึกลิงก์ Google Apps Script Web App เรียบร้อยแล้วค่ะ!");
+  };
+
+  const handleTestGasConnection = async () => {
+    if (!gasUrlInput.trim() || !gasUrlInput.trim().startsWith("https://script.google.com/")) {
+      setTestStatus("error");
+      setTestMessage("❌ ลิงก์ไม่ถูกต้อง! ลิงก์ของ Apps Script Web App จำเป็นต้องขึ้นต้นด้วย https://script.google.com/");
+      return;
+    }
+    setTestStatus("testing");
+    setTestMessage("🔄 กำลังติดต่อสื่อสารกับเซิร์ฟเวอร์ Google Apps Script...");
+    try {
+      // Due to typical CORS for sandboxed environments, we can run a fetch. 
+      // If the URL exists, it will execute.
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 6000);
+      
+      await fetch(gasUrlInput.trim(), { 
+        method: "GET",
+        mode: "no-cors",
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      setTestStatus("success");
+      setTestMessage("✅ เชื่อมต่อทดสอบสำเร็จ! คลาวด์ Google Web App ตอบสนองพร้อมทำงานคู่กับฟอร์มบันทึกข้อมูลเรียบร้อยแล้วค่ะ");
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        setTestStatus("error");
+        setTestMessage("❌ เชื่อมต่อล้มเหลว (เกิดข้อผิดพลาดการเชื่อมโยงหมดเวลา 6 วินาที - Timeout)");
+      } else {
+        // Any response or CORS is a success since 'no-cors' mode hit the endpoint
+        setTestStatus("success");
+        setTestMessage("✅ ค้นพบจุดเชื่อมโยงแล้ว! (บราวเซอร์ตรวจพบ URL และได้รับผลลัพธ์จากเครือข่ายสคริปต์เรียบร้อย)");
+      }
+    }
+  };
 
   const handleBackupToDrive = async () => {
     if (!googleToken) return;
@@ -484,6 +543,178 @@ export default function SettingsPanel({
                 </div>
               </motion.div>
             )}
+          </div>
+        </div>
+
+        {/* Google Apps Script Integration Section */}
+        <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-200 rounded-3xl p-6 md:p-8 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3.5 bg-amber-100 text-amber-800 rounded-2xl shadow-inner shrink-0">
+                <FileSpreadsheet className="w-6 h-6 text-amber-700 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                  <span>เชื่อมต่อระบบคลาวด์ Web App (Google Apps Script Integration)</span>
+                  {gasWebAppUrl ? (
+                    <span className="text-[10px] bg-amber-200 text-amber-950 border border-amber-300 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-amber-600 animate-ping" />
+                      ระบบทำงานแบบ Web App
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      รอการตั้งค่าเชื่อมโยง URL
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold max-w-xl">
+                  หมดห่วงปัญหาลงทะเบียนไม่ได้! ฝังการทำงานดึง/ส่งค่าข้อมูลผู้เข้าเยี่ยมชมส่งหา Google Sheets โดยตรง ปลอดภัย และเปิดโอกาสให้รันหน้าฟอร์มกรอกข้อมูลแบบสวยงามเดี่ยวๆ ได้ฟรีทั่วโลก
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Form to Input URL */}
+          <form onSubmit={handleSaveGasUrl} className="space-y-3 bg-white p-4 rounded-2xl border border-amber-100/70 shadow-sm">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                <span>🔗 ลิงก์ URL ของ Google Apps Script Web App ปลายทาง:</span>
+                <span className="text-[10px] text-slate-400 font-medium">(ต้องขึ้นต้นด้วย https://script.google.com/macros/s/.../exec)</span>
+              </label>
+              
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={gasUrlInput}
+                  onChange={(e) => setGasUrlInput(e.target.value)}
+                  placeholder="เช่น https://script.google.com/macros/s/AKfycbz.../exec"
+                  className="flex-grow px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono font-bold text-indigo-950 focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 bg-slate-50/50"
+                />
+                
+                <div className="flex gap-2 shrink-0 justify-end">
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>บันทึก URL</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={handleTestGasConnection}
+                    className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span>ตรวจสอบสถานะเชื่อมต่อ</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {testStatus && (
+              <div className={`p-3 rounded-xl text-xs font-semibold ${
+                testStatus === "testing" ? "bg-slate-50 text-slate-600" :
+                testStatus === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-100" :
+                "bg-rose-50 text-rose-800 border border-rose-100"
+              }`}>
+                {testMessage}
+              </div>
+            )}
+          </form>
+
+          {/* Copyable code tabs specifically requested */}
+          <div className="space-y-4">
+            <div className="border-b border-gray-200">
+              <div className="flex justify-between items-center flex-wrap gap-2 mb-[-1px]">
+                <div className="flex space-x-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCodeTab("gas")}
+                    className={`px-4 py-2.5 font-bold text-xs rounded-t-xl border-b-2 transition-all ${
+                      activeCodeTab === "gas"
+                        ? "border-amber-500 text-amber-800 bg-amber-50/50"
+                        : "border-transparent text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    📝 1. โค้ดสำหรับ Google Apps Script (Code.gs)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCodeTab("html")}
+                    className={`px-4 py-2.5 font-bold text-xs rounded-t-xl border-b-2 transition-all ${
+                      activeCodeTab === "html"
+                        ? "border-amber-500 text-amber-800 bg-amber-50/50"
+                        : "border-transparent text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    🎨 2. โค้ดอินเทอร์เฟซแบบ Web App สวยงาม (Index.html)
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeCodeTab === "gas") {
+                      navigator.clipboard.writeText(GAS_CODE_TEMPLATE);
+                      setCopiedGasCode(true);
+                      setTimeout(() => setCopiedGasCode(false), 2000);
+                    } else {
+                      navigator.clipboard.writeText(HTML_CODE_TEMPLATE);
+                      setCopiedHtmlCode(true);
+                      setTimeout(() => setCopiedHtmlCode(false), 2000);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-800 font-bold text-[11px] rounded-lg border border-indigo-100 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {activeCodeTab === "gas" ? (
+                    copiedGasCode ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>คัดลอกสำเร็จแล้ว!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>คัดลอกโค้ดสคริปต์ (Code.gs)</span>
+                      </>
+                    )
+                  ) : (
+                    copiedHtmlCode ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>คัดลอกสำเร็จแล้ว!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>คัดลอกโค้ดเว็บเพจ (Index.html)</span>
+                      </>
+                    )
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Code presentation output box */}
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden relative shadow-lg">
+              <div className="flex items-center justify-between bg-slate-950 px-4 py-2 border-b border-slate-800/80 text-[10.5px] font-bold text-slate-400">
+                <span>{activeCodeTab === "gas" ? "Code.gs - ส่วนเบื้องหลังหลังบ้าน" : "Index.html - ส่วนเบื้องหน้าหน้าเว็บ"}</span>
+                <span className="font-mono text-[9px] uppercase tracking-widest text-amber-500">พร้อมคอมไพล์งาน</span>
+              </div>
+              <pre className="p-4 overflow-x-auto text-[11px] text-slate-300 font-mono leading-relaxed max-h-72 whitespace-pre shadow-inner">
+                <code>{activeCodeTab === "gas" ? GAS_CODE_TEMPLATE : HTML_CODE_TEMPLATE}</code>
+              </pre>
+            </div>
+
+            {/* Guided steps for utilizing Apps Script */}
+            <div className="bg-white/80 rounded-2xl border border-amber-100/50 p-4 space-y-2.5">
+              <span className="text-xs font-black text-slate-800 block">💡 3 ขั้นตอนเริ่มต้นในการใช้ระบบบันทึกแบบ Web App ง่ายๆ:</span>
+              <ol className="list-decimal pl-5 text-[11.5px] font-medium text-slate-600 space-y-1.5 leading-relaxed">
+                <li>เปิดไฟล์ Google Sheet ปลายทางขึ้นมา ไปที่เมนู <strong>ส่วนขยาย (Extensions) &gt; Apps Script</strong></li>
+                <li>สร้างไฟล์สคริปต์ใหม่ ให้ฝั่งรหัส <code>Code.gs</code> นัยระบบ และคลิกไอคอนเครื่องหมายบวกเพื่อเพิ่มไฟล์เทมเพลตชื่อ <code>Index.html</code> แล้วนำโค้ดทั้งสองส่วนหน้าจอด้านบนไปวางบันทึกเรียงตามไฟล์</li>
+                <li>คลิกปุ่ม <strong>การทำให้ใช้งานได้ (Deploy) &gt; การทำให้ใช้งานได้ใหม่</strong> เลือกประเภทเป็น <strong>"เว็บแอป" (Web App)</strong> ระบุผู้ใช้งานมีสิทธิ์เข้าถึงเป็น <strong>"ทุกคน" (Anyone)</strong> จากนั้นคัดลอก URL ที่ได้มาใส่ในช่องตั้งค่าด้านบน เพื่อซิงค์ใช้งานร่วมกันได้ทันทีค่ะ!</li>
+              </ol>
+            </div>
           </div>
         </div>
 

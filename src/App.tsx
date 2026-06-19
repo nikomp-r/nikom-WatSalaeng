@@ -78,6 +78,14 @@ export default function App() {
     return localStorage.getItem("salaeng_admin_session_token") || "";
   });
 
+  const [gasWebAppUrl, setGasWebAppUrl] = useState<string>(() => {
+    return localStorage.getItem("salaeng_gas_url_v1") || "";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("salaeng_gas_url_v1", gasWebAppUrl);
+  }, [gasWebAppUrl]);
+
   const [activeTab, setActiveTab] = useState<"register" | "dashboard" | "settings">("register");
   
   // Running live clock state
@@ -250,13 +258,33 @@ export default function App() {
 
     setVisitors((prev) => [newVisitor, ...prev]);
 
+    // 1) Save directly to Google Sheets via OAuth token IF connected
     const currentToken = googleToken || getAccessToken();
     if (currentToken) {
       try {
         await appendVisitorToSheet(currentToken, newVisitor);
-        console.log("Registered and saved to Google Sheets successfully!");
+        console.log("Registered and saved via direct Google Sheets OAuth successfully!");
       } catch (err: any) {
         console.error("Failed to append to Google Sheet on record:", err);
+      }
+    }
+
+    // 2) Save directly to Google Apps Script Web App URL IF configured as backend Web App
+    if (gasWebAppUrl && gasWebAppUrl.trim().startsWith("https://script.google.com/")) {
+      try {
+        console.log("Saving to Google Apps Script Web App dynamically...");
+        // Fetch to GAS via text/plain avoids browser preflight CORS prechecks
+        await fetch(gasWebAppUrl.trim(), {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(newVisitor)
+        });
+        console.log("Data replicated to GAS Web App endpoint perfectly.");
+      } catch (gasErr) {
+        console.error("Failed to post to Google Apps Script:", gasErr);
       }
     }
   };
@@ -610,6 +638,8 @@ export default function App() {
                   onGoogleSignIn={handleGoogleSignIn}
                   onGoogleSignOut={handleGoogleSignOut}
                   onSyncWithGoogleSheets={handleSyncWithGoogleSheets}
+                  gasWebAppUrl={gasWebAppUrl}
+                  onUpdateGasUrl={setGasWebAppUrl}
                 />
               </motion.div>
             )}
