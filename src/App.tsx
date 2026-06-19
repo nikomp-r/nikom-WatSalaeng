@@ -561,6 +561,53 @@ export default function App() {
                     isAdminLoggedIn={isAdminLoggedIn}
                   />
                 </div>
+
+                {/* ระบบแสดงผลการทำงานของระบบผลิตไฟฟ้าพลังงานแสงอาทิตย์ ณ โรงเรียนวัดแสลง */}
+                <div className="lg:col-span-3 bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-md space-y-6 relative overflow-hidden transition-all text-slate-800 mt-4">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/[0.04] rounded-full blur-3xl pointer-events-none" />
+                  
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl border border-amber-200 shadow-inner">
+                        <Sun className="w-6 h-6 animate-pulse text-amber-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs font-bold text-amber-700 tracking-wider uppercase flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" /> แผงควบคุมระบบอัจฉริยะ (IoT Monitoring)
+                        </span>
+                        <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
+                          ระบบแสดงผลการทำงานของระบบผลิตไฟฟ้าพลังงานแสงอาทิตย์ ณ โรงเรียนวัดแสลง
+                        </h2>
+                        <p className="text-xs text-slate-500 font-semibold max-w-2xl">
+                          ติดตามประสิทธิภาพการผลิตพลังงานแสงอาทิตย์ (Solar Rooftop) และอัตราประหยัดพลังงานไฟฟ้าร่วมกับเครือข่ายอินเทอร์เน็ตของสรรพสิ่งในระดับภาพรวมแบบเวลาจริง
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <a
+                      href="https://home.solarmanpv.com/largescreen?plantId=65584419"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2.5 bg-slate-900 text-white hover:bg-slate-800 transition-all text-xs font-bold rounded-xl shadow flex items-center justify-center gap-1.5 shrink-0 self-start md:self-center cursor-pointer"
+                    >
+                      <span>เปิดเต็มหน้าจอ (Largescreen)</span>
+                      <Cpu className="w-3.5 h-3.5 text-amber-400" />
+                    </a>
+                  </div>
+
+                  <div className="relative bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-inner group">
+                    {/* Embedded Solarman Landscape dashboard iframe */}
+                    <div className="aspect-video w-full h-[380px] sm:h-[450px] md:h-[580px] lg:h-[680px]">
+                      <iframe
+                        src="https://home.solarmanpv.com/largescreen?plantId=65584419"
+                        className="w-full h-full border-0 rounded-2xl"
+                        allowFullScreen
+                        loading="lazy"
+                        title="Solarman PV monitoring"
+                      />
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             )}
 
